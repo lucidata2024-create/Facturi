@@ -32,7 +32,15 @@ import {
   /* =========================
      FIREBASE INIT
   ========================= */
-  
+  const firebaseConfig = {
+  apiKey: "AIzaSyDFKwaf_bKtNcgtbMMSucs0pIyFl8duOxE",
+  authDomain: "lucidata-fact.firebaseapp.com",
+  projectId: "lucidata-fact",
+  storageBucket: "lucidata-fact.firebasestorage.app",
+  messagingSenderId: "166097283064",
+  appId: "1:166097283064:web:066aa12ff54100d72a180d",
+  measurementId: "G-DKDDDYD80R"
+};
 
   const app = initializeApp(firebaseConfig);
   try { getAnalytics(app); } catch { /* analytics optional */ }
