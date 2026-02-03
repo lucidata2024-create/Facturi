@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LuciDataFact — Evidența Facturilor</title>
+  <meta name="description" content="LuciDataFact" />
+  <link rel="stylesheet" href="assets/css/lucidatafact.css" />
+</head>
+
+<body>
+  <div class="app">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">📄</div>
+        <div>
+          <h1>LuciDataFact</h1>
+          <div class="sub">Evidența facturilor · notificări · încasări</div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn" id="btnAddInvoice">➕ Factură</button>
+        <button class="btn" id="btnAddCategory">🏷️ Categorie</button>
+        <button class="btn" id="btnEnableNotifs">🔔 Notificări</button>
+
+        <div class="sep"></div>
+
+        <button class="btn" id="btnExport">⬇️ Export</button>
+        <label class="btn btn-file" for="importFile">⬆️ Import</label>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <button class="btn btn-ghost" id="btnReset">♻️ Reset</button>
+      </div>
+    </header>
+
+    <!-- KPI -->
+    <section class="kpis" aria-label="Indicatori">
+      <div class="kpi">
+        <div class="kpi-title">Neîncasate</div>
+        <div class="kpi-value" id="kpiUnpaid">0</div>
+        <div class="kpi-sub" id="kpiUnpaidSum">0 RON</div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-title">De trimis azi</div>
+        <div class="kpi-value" id="kpiToSendToday">0</div>
+        <div class="kpi-sub">Facturi cu trimitere programată azi</div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-title">Scadente (7 zile)</div>
+        <div class="kpi-value" id="kpiDueSoon">0</div>
+        <div class="kpi-sub">Scadență în următoarele 7 zile</div>
+      </div>
+
+      <div class="kpi">
+        <div class="kpi-title">Întârziate</div>
+        <div class="kpi-value" id="kpiOverdue">0</div>
+        <div class="kpi-sub">Neplătite după scadență</div>
+      </div>
+    </section>
+
+    <!-- FILTERS -->
+    <section class="panel filters" aria-label="Filtre">
+      <div class="row">
+        <div class="field grow">
+          <label for="search">Căutare</label>
+          <input id="search" type="search" placeholder="Caută după client, număr factură, magazin, locație..." />
+        </div>
+
+        <div class="field">
+          <label for="filterStatus">Status</label>
+          <select id="filterStatus">
+            <option value="all">Toate</option>
+            <option value="unpaid">Neplătite</option>
+            <option value="paid">Plătite</option>
+            <option value="unsent">Netrimise</option>
+            <option value="sent">Trimise</option>
+            <option value="overdue">Întârziate</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filterShop">Magazin</label>
+          <select id="filterShop">
+            <option value="all">Toate</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filterLocation">Locație</label>
+          <select id="filterLocation">
+            <option value="all">Toate</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="sortBy">Sortare</label>
+          <select id="sortBy">
+            <option value="sendDate_asc">Trimitere ↑</option>
+            <option value="sendDate_desc">Trimitere ↓</option>
+            <option value="dueDate_asc">Scadență ↑</option>
+            <option value="dueDate_desc">Scadență ↓</option>
+            <option value="issueDate_desc">Emitere ↓</option>
+            <option value="amount_desc">Sumă ↓</option>
+            <option value="amount_asc">Sumă ↑</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn" id="btnClearFilters">🧹 Reset filtre</button>
+        </div>
+      </div>
+
+      <div class="row small">
+        <div class="hint" id="notifHint">🔔 Notificările sunt dezactivate.</div>
+        <div class="spacer"></div>
+        <div class="hint" id="countHint">0 rezultate</div>
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="panel table-wrap" aria-label="Listă facturi">
+      <div class="table-head">
+        <div>
+          <h2>Facturi</h2>
+          <div class="muted">Gestionați trimiterea și încasarea facturilor, pe magazine/locații.</div>
+        </div>
+        <div class="table-actions">
+          <button class="btn" id="btnMarkSendToday">📤 Marchează „Trimis azi” (selectate)</button>
+          <button class="btn" id="btnMarkPaidToday">💳 Marchează „Plătit azi” (selectate)</button>
+          <button class="btn btn-danger" id="btnDeleteSelected">🗑️ Șterge selectate</button>
+        </div>
+      </div>
+
+      <div class="table-scroll" role="region" aria-label="Tabel facturi">
+        <table class="table" id="invoiceTable">
+          <thead>
+            <tr>
+              <th class="col-check">
+                <input type="checkbox" id="checkAll" aria-label="Selectează toate" />
+              </th>
+              <th>Factură</th>
+              <th>Client</th>
+              <th>Magazin</th>
+              <th>Locație</th>
+              <th>Sumă</th>
+              <th>Trimitere</th>
+              <th>Scadență</th>
+              <th>Status</th>
+              <th class="col-actions">Acțiuni</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceTbody">
+            <!-- randuri din JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty" id="emptyState" hidden>
+        <div class="empty-card">
+          <div class="empty-ico">🧾</div>
+          <div class="empty-title">Nu există facturi încă</div>
+          <div class="empty-sub">Adăugați prima factură și începeți evidența.</div>
+          <button class="btn" id="btnAddInvoiceEmpty">➕ Adaugă factură</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOAST HOST -->
+    <div class="toasts" id="toastHost" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <!-- MODAL: INVOICE -->
+  <div class="modal" id="modalInvoice" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Factură">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="modalInvoiceTitle">Factură</div>
+          <div class="modal-sub">Completați datele facturii și programarea trimiterii.</div>
+        </div>
+        <button class="iconbtn" id="btnCloseInvoice" aria-label="Închide">✕</button>
+      </div>
+
+      <form id="invoiceForm" class="modal-body">
+        <input type="hidden" id="invoiceId" />
+
+        <div class="grid2">
+          <div class="field">
+            <label for="invNumber">Număr factură *</label>
+            <input id="invNumber" required placeholder="ex: LDF-2026-001" />
+          </div>
+          <div class="field">
+            <label for="invClient">Client *</label>
+            <input id="invClient" required placeholder="ex: SC Exemplu SRL" />
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="field">
+            <label for="invIssueDate">Data emitere *</label>
+            <input id="invIssueDate" type="date" required />
+          </div>
+          <div class="field">
+            <label for="invSendDate">Data trimitere (notificare) *</label>
+            <input id="invSendDate" type="date" required />
+          </div>
+          <div class="field">
+            <label for="invDueDate">Data scadență *</label>
+            <input id="invDueDate" type="date" required />
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="field">
+            <label for="invAmount">Sumă (RON) *</label>
+            <input id="invAmount" type="number" min="0" step="0.01" required placeholder="ex: 1250.50" />
+          </div>
+          <div class="field">
+            <label for="invShop">Magazin *</label>
+            <select id="invShop" required></select>
+          </div>
+          <div class="field">
+            <label for="invLocation">Locație *</label>
+            <select id="invLocation" required></select>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label for="invSent">Trimisă?</label>
+            <select id="invSent">
+              <option value="no">Nu</option>
+              <option value="yes">Da</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="invPaid">Plătită?</label>
+            <select id="invPaid">
+              <option value="no">Nu</option>
+              <option value="yes">Da</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid2" id="paidRow" hidden>
+          <div class="field">
+            <label for="invPaidDate">Data încasării</label>
+            <input id="invPaidDate" type="date" />
+          </div>
+          <div class="field">
+            <label for="invPaidRef">Referință încasare (opțional)</label>
+            <input id="invPaidRef" placeholder="ex: OP #12345 / tranzacție" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="invNotes">Note (opțional)</label>
+          <textarea id="invNotes" rows="3" placeholder="Observații..."></textarea>
+        </div>
+
+        <div class="modal-foot">
+          <div class="left">
+            <button type="button" class="btn btn-ghost" id="btnDeleteInvoice" hidden>🗑️ Șterge</button>
+          </div>
+          <div class="right">
+            <button type="button" class="btn btn-ghost" id="btnCancelInvoice">Anulează</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveInvoice">Salvează</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CATEGORY -->
+  <div class="modal" id="modalCategory" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Categorie">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Categorii</div>
+          <div class="modal-sub">Gestionați listele de Magazine și Locații.</div>
+        </div>
+        <button class="iconbtn" id="btnCloseCategory" aria-label="Închide">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="grid2">
+          <div class="panel mini">
+            <div class="mini-head">
+              <div class="mini-title">Magazine</div>
+              <div class="mini-actions">
+                <input id="newShopName" placeholder="Adaugă magazin..." />
+                <button class="btn" id="btnAddShop">➕</button>
+              </div>
+            </div>
+            <ul class="list" id="shopList"></ul>
+          </div>
+
+          <div class="panel mini">
+            <div class="mini-head">
+              <div class="mini-title">Locații</div>
+              <div class="mini-actions">
+                <input id="newLocationName" placeholder="Adaugă locație..." />
+                <button class="btn" id="btnAddLocation">➕</button>
+              </div>
+            </div>
+            <ul class="list" id="locationList"></ul>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <div class="left muted">Notă: nu puteți șterge o categorie folosită de facturi.</div>
+          <div class="right">
+            <button class="btn btn-primary" id="btnDoneCategory">Gata</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/lucidatafact.js"></script>
+</body>
+</html>
